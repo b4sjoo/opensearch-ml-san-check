@@ -1,2 +1,2 @@
-# opensearch_ml_san_check
+# opensearch-ml-san-check
 Sanity check script for OpenSearch ML-Commons plugin
