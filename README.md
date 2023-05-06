@@ -10,7 +10,7 @@ Sanity check script in python for OpenSearch ML-Commons plugin
 python3 san_check.py host port [--working_directory [folder with your import data and its index]] [--auth account password] [--ml_node_only] [--memory_cb_activate]
 * Host and port argument are __always required__ and should be __separated by space__. Separating by colon(:) is not accepted. The host address should __explicitly specify the protocol__ (We only support https now)
 * --working_directory can be shortened as -wd, when this argument is not specified, data import process won't be activated.
-* --ml_node_only can beshortened as -ML. If __not__ specified, the ml commons plugin can be run on all nodes.
+* --ml_node_only can be shortened as -ML. If __not__ specified, the ml commons plugin can be run on all nodes.
 * --memory_cb_activate can be shortened as -CB. If __not__ specified, the circuit breaker is deactivated.
 
 ## TODO
