@@ -81,7 +81,7 @@
           "type": "keyword"
         },
         "value": {
-          "type": "INTEGER"
+          "type": "integer"
         },
         "timestamp": {
           "type": "date",
