@@ -537,9 +537,9 @@ def main():
     response = requests.get(
         URL+f"_plugins/_ml/models/fake_model", auth=AUTH, verify=False)
     try:
-        assert response.json()["error"]["type"] == "illegal_argument_exception",\
+        assert response.json()["error"]["type"] == "status_exception",\
             f"Testing get method with non-existing model failed, " \
-            f"expect 'illegal_argument_exception', return {response.json()['error']['root_cause']}, please check."
+            f"expect 'status_exception', return {response.json()['error']['root_cause']}, please check."
     except KeyError:
         print(f'{datetime.datetime.now()} '
               f'Testing get method with non-existing model failed with status code {response.status_code}')
@@ -590,9 +590,9 @@ def main():
     response = requests.delete(
         URL+f"_plugins/_ml/models/fake_model", auth=AUTH, verify=False)
     try:
-        assert response.json()["error"]["type"] == "illegal_argument_exception",\
+        assert response.json()["error"]["type"] == "status_exception",\
             f"Testing get method with non-existing model failed, " \
-            f"expect 'illegal_argument_exception', return {response.json()['error']['root_cause']}, please check."
+            f"expect 'status_exception', return {response.json()['error']['root_cause']}, please check."
     except KeyError:
         print(f'{datetime.datetime.now()} '
               f'Testing delete method with non-existing model failed with status code {response.status_code}')
@@ -690,11 +690,11 @@ def main():
 
     print(f"{datetime.datetime.now()} Testing stats API with getting specific stats of all nodes")
     response = requests.get(
-        URL+f"_plugins/_ml/stats/ml_node_total_request_count", auth=AUTH, verify=False)
+        URL+f"_plugins/_ml/stats/ml_request_count", auth=AUTH, verify=False)
     try:
-        assert any(dict(k)['ml_node_total_request_count'] for k in response.json()["nodes"].values()),\
+        assert any(dict(k)['ml_request_count'] for k in response.json()["nodes"].values()),\
             f"Testing stats API with getting specific stats of all nodes failed, " \
-            f"expect some nodes' ml_node_executing_task_count greater than 0, return 0, please check."
+            f"expect some nodes'ml_request_count greater than 0, return 0, please check."
     except KeyError:
         print(f'{datetime.datetime.now()} '
               f'Testing stats API with getting specific stats of all nodes failed '
@@ -702,8 +702,7 @@ def main():
     print(f"{datetime.datetime.now()} Testing stats API with getting specific stats of all nodes finished.")
 
     print(f"{datetime.datetime.now()} Testing stats API with getting stats of one specific node")
-    sample_node_id = [k for k, v in response.json(
-    )["nodes"].items() if v['ml_node_total_request_count'] > 0][0]
+    sample_node_id = [k for k, v in response.json()["nodes"].items() if v['ml_request_count'] > 0][0]
     response = requests.get(
         URL+f"_plugins/_ml/{sample_node_id}/stats", auth=AUTH, verify=False)
     try:
@@ -717,12 +716,12 @@ def main():
     print(f"{datetime.datetime.now()} Testing stats API with getting stats of one specific node finished.")
 
     print(f"{datetime.datetime.now()} Testing stats API with getting specific stats of one specific node")
-    response = requests.get(URL+f"_plugins/_ml/{sample_node_id}/stats/ml_node_total_request_count",
+    response = requests.get(URL+f"_plugins/_ml/{sample_node_id}/stats/ml_request_count",
                             auth=AUTH, verify=False)
     try:
-        assert response.json()['nodes'][sample_node_id].get('ml_node_total_request_count') is not None,\
+        assert response.json()['nodes'][sample_node_id].get('ml_request_count') is not None,\
             f"Testing stats API with getting specific stats of one specific node, " \
-            f"fail to get a node with id {sample_node_id} and entry ml_node_total_request_count, please check."
+            f"fail to get a node with id {sample_node_id} and entry ml_request_count, please check."
     except KeyError:
         print(f'{datetime.datetime.now()} '
               f'Testing stats API with getting specific stats of one specific node failed '
