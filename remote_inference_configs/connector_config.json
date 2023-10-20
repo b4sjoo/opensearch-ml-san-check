@@ -1,0 +1,104 @@
+{"openai_connector": {
+        "name": "OpenAI Connector",
+        "description": "The connector to public OpenAI model service for GPT 3.5",
+        "version": 1,
+        "protocol": "http",
+        "parameters": {
+            "endpoint": "api.openai.com",
+            "max_tokens": 7,
+            "temperature": 0,
+            "model": "text-davinci-003"
+        },
+        "actions": [
+            {
+                "action_type": "predict",
+                "method": "POST",
+                "url": "https://${parameters.endpoint}/v1/completions",
+                "headers": {
+                    "Authorization": "Bearer ${credential.openAI_key}"
+                },
+                "request_body": "{ \"model\": \"${parameters.model}\", \"prompt\": \"${parameters.prompt}\", \"max_tokens\": ${parameters.max_tokens}, \"temperature\": ${parameters.temperature} }"
+        }]
+    },
+
+    "openai_model": {
+        "name": "openAI-GPT-3.5 completions",
+        "function_name": "remote",
+        "description": "Test OpenAI model"
+    },
+
+    "cohere_connector": {
+        "name": "Cohere Connector: embedding",
+        "description": "The connector to cohere embedding model",
+        "version": 1,
+        "protocol": "http",
+        "actions": [
+            {
+                "action_type": "predict",
+                "method": "POST",
+                "url": "https://api.cohere.ai/v1/embed",
+                "headers": {
+                    "Authorization": "Bearer ${credential.cohere_key}"
+                },
+                "request_body": "{ \"texts\": ${parameters.prompt}, \"truncate\": \"END\" }"
+            }
+        ]
+    },
+
+    "cohere_model": {
+        "name": "Cohere rerank model",
+        "function_name": "remote",
+        "description": "Test Cohere model"
+    },
+
+    "bedrock_connector": {
+        "name": "Bedrock Connector: embedding",
+        "description": "The connector to bedrock embedding model",
+        "version": 1,
+        "protocol": "aws_sigv4",
+        "actions": [
+            {
+                "action_type": "predict",
+                "method": "POST",
+                "url": "https://bedrock.us-east-1.amazonaws.com/model/amazon.titan-e1t-medium/invoke",
+                "headers": {
+                    "content-type": "application/json",
+                    "x-amz-content-sha256": "required"
+                },
+                "request_body": "{ \"inputText\": \"${parameters.inputText}\" }"
+            }
+        ]
+    },
+
+    "bedrock_model": {
+        "name": "Bedrock embedding model",
+        "function_name": "remote",
+        "description": "Test Bedrock model"
+    },
+
+    "sagemaker_connector": {
+            "name": "sagemaker: embedding",
+            "description": "Test connector for Sagemaker embedding model",
+            "version": 1,
+            "protocol": "aws_sigv4",
+            "actions": [
+                {
+                    "action_type": "predict",
+                    "method": "POST",
+                    "headers": {
+                    "content-type": "application/json"
+                    },
+                    "url": "https://runtime.sagemaker.us-east-1.amazonaws.com/endpoints/lmi-model-2023-09-20-19-06-37-374/invocations",
+                    "request_body": "[\"${parameters.inputs}\"]",
+                    "pre_process_function": "\n    StringBuilder builder = new StringBuilder();\n    builder.append(\"\\\"\");\n    builder.append(params.text_docs[0]);\n    builder.append(\"\\\"\");\n    def parameters = \"{\" +\"\\\"inputs\\\":\" + builder + \"}\";\n    return  \"{\" +\"\\\"parameters\\\":\" + parameters + \"}\";",
+                    "post_process_function": "\n      def name = \"sentence_embedding\";\n      def dataType = \"FLOAT32\";\n      if (params.result == null || params.result.length == 0) {\n          return null;\n      }\n      def shape = [params.result[0].length];\n      def json = \"{\" +\n                 \"\\\"name\\\":\\\"\" + name + \"\\\",\" +\n                 \"\\\"data_type\\\":\\\"\" + dataType + \"\\\",\" +\n                 \"\\\"shape\\\":\" + shape + \",\" +\n                 \"\\\"data\\\":\" + params.result[0] +\n                 \"}\";\n      return json;\n    "
+                }
+            ]
+        },
+    
+    "sagemaker_model": {
+        "name": "Sagemaker embedding model",
+        "function_name": "remote",
+        "description": "Test Sagemaker model"
+    }
+}
