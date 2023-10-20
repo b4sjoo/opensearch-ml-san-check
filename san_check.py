@@ -31,7 +31,7 @@ if args.auth is not None:
     AUTH = HTTPBasicAuth(*args.auth)
 else:
     AUTH = None
-WD = args.working_directory
+WORKING_DIRECTORY = args.working_directory
 
 HEADERS = {'Content-type': 'application/json'}
 ML_NODE_OVERRIDE = json.dumps(
@@ -108,8 +108,8 @@ LOGI_DIRECT_INPUT_DATA = json.dumps({"parameters": {"target": "class"}, "input_d
 def data_preparation(data_path):
     if data_path[-1] != '/':
         data_path += '/'
-    indices_file = open(data_path + 'data_indices.json')
-    data_indices = json.load(indices_file)
+    with open(data_path + 'data_indices.json') as indices_file:
+        data_indices = json.load(indices_file)
     index_repr_dict = {'iris_data': "iris data", 'nyc_taxi': "nyc taxi data", 'fourclass_data': "four class data",
                        'test_data': "training data", 'predict_data': "predicting data",
                        "rca-index": "anomaly localization data"}
@@ -217,8 +217,8 @@ def security_test(id_dict):
 
 def main():
     config_preparation(args.ml_node_only, args.memory_cb_activate)
-    if WD is not None:
-        data_preparation(WD)
+    if WORKING_DIRECTORY is not None:
+        data_preparation(WORKING_DIRECTORY)
     print(f"{datetime.datetime.now()} Sanity check started.")
     san_check_id_dict = dict()
 
