@@ -18,6 +18,8 @@ parser.add_argument("--working_directory", "-wd", nargs='?', const=os.getcwd(),
 parser.add_argument("--auth", nargs=2, help="The authentication for logging to your OpenSearch cluster, "
                     "with your first parameter being account and second being your password, split by space. "
                     "Please note that if --auth is not specified, the security test won't be performed.")
+parser.add_argument("--no_ppl", action='store_true',
+                    help="Whether to perform the test on PPL command or not. If not specified, PPL test will run")
 parser.add_argument("--ml_node_only", "-ML", action='store_true',
                     help="Whether the ml commons plugin can be run on all nodes or can only be run on ml nodes."
                          "If not specified, the ml commons plugin can be run on all nodes.")
@@ -215,6 +217,91 @@ def security_test(id_dict):
     print(f"{datetime.datetime.now()} Testing delete protected indices finished.")
 
 
+def ppl_test(id_dict):
+    print(f"{datetime.datetime.now()} Querying iris data with PPL command and pass it to kmeans to perform clustering.")
+    request_body = json.dumps({"query": "source=iris_data | fields petal_length_in_cm,petal_width_in_cm | kmeans centroids=3"})
+    response = requests.post(URL+f"_plugins/_ppl",
+                            data=request_body, headers=HEADERS, auth=AUTH, verify=False)
+    try:
+        assert response.json()["schema"][2]["name"] == "ClusterID", \
+            "Querying iris data with PPL command failed, please check."
+    except KeyError:
+        print(f'{datetime.datetime.now()} '
+              f'Querying iris data with PPL command failed with status code {response.status_code}')
+    assert len(response.json()["datarows"][0]) == 3, \
+        "The predicting result schema is different from input query, please check."
+    print(f"{datetime.datetime.now()} Querying iris data with PPL command and pass it to kmeans to perform clustering finished.")
+
+    print(f"{datetime.datetime.now()} Training and predicting iris data with kmeans through PPL command.")
+    request_body = json.dumps({"query": "source=iris_data | fields petal_length_in_cm,petal_width_in_cm | ml action='trainandpredict' algorithm='kmeans' centroid=3 iterationn=2 distType='cosine'"})
+    response = requests.post(URL+f"_plugins/_ppl",
+                            data=request_body, headers=HEADERS, auth=AUTH, verify=False)
+    try:
+        assert response.json()["schema"][2]["name"] == "ClusterID", \
+            "Training and predicting iris data with kmeans through PPL command failed, please check."
+    except KeyError:
+        print(f'{datetime.datetime.now()} '
+              f'Training and predicting iris data with kmeans through PPL command failed with status code {response.status_code}')
+    assert len(response.json()["datarows"][0]) == 3, \
+        "The training and predicting result schema is different from input query, please check."
+    print(f"{datetime.datetime.now()} Training and predicting iris data with kmeans through PPL command finished.")
+
+    print(f"{datetime.datetime.now()} Training iris data with kmeans through PPL command.")
+    request_body = json.dumps({"query": "source=iris_data | fields petal_length_in_cm,petal_width_in_cm | ml action='train' algorithm='kmeans' centroid=3 iteration=2 distType='cosine' async=false"})
+    response = requests.post(URL+f"_plugins/_ppl",
+                            data=request_body, headers=HEADERS, auth=AUTH, verify=False)
+    try:
+        assert response.json()["datarows"][0][0] == "COMPLETED", \
+            "Training iris data with kmeans through PPL command failed, please check."
+    except KeyError:
+        print(f'{datetime.datetime.now()} '
+              f'Training iris data with kmeans through PPL command failed with status code {response.status_code}')
+    id_dict.update({"ppl_kmeans": {"model_id": response.json()["datarows"][0][1]}})
+    print(f"{datetime.datetime.now()} Training iris data with kmeans through PPL command finished.")
+
+    print(f"{datetime.datetime.now()} Predicting iris data with kmeans through PPL command.")
+    request_body = json.dumps({"query": f"source=iris_data | fields petal_length_in_cm,petal_width_in_cm | ml action='predict' algorithm='kmeans' centroid=3 iteration=2 distType='cosine' modelid='{id_dict['ppl_kmeans']['model_id']}'"})
+    response = requests.post(URL+f"_plugins/_ppl",
+                            data=request_body, headers=HEADERS, auth=AUTH, verify=False)
+    try:
+        assert response.json()["schema"][2]["name"] == "ClusterID", \
+            "Predicting iris data with kmeans through PPL command failed, please check."
+    except KeyError:
+        print(f'{datetime.datetime.now()} '
+              f'Predicting iris data with PPL command failed with status code {response.status_code}')
+    assert len(response.json()["datarows"][0]) == 3, \
+        "The predicting result schema is different from input query, please check."
+    print(f"{datetime.datetime.now()} Predicting iris data with kmeans through PPL command finished.")
+
+    print(f"{datetime.datetime.now()} Detecting anomaly in fourclass non-time-series data through PPL command.")
+    request_body = json.dumps({"query": "source=fourclass_data | sort - anomaly_type | head 10000 | fields A,B | ad "})
+    response = requests.post(URL+f"_plugins/_ppl",
+                            data=request_body, headers=HEADERS, auth=AUTH, verify=False)
+    try:
+        assert response.json()["schema"][3]["name"] == "anomalous", \
+            "Detecting anomaly in fourclass non-time-series data through PPL command failed, please check."
+    except KeyError:
+        print(f'{datetime.datetime.now()} '
+              f'Detecting anomaly in fourclass non-time-series data through PPL command failed with status code {response.status_code}')
+    assert len(response.json()["datarows"][0]) == 4, \
+        "The predicting result schema is different from input query, please check."
+    print(f"{datetime.datetime.now()} Detecting anomaly in fourclass non-time-series data through PPL command finished.")
+
+    print(f"{datetime.datetime.now()} Detecting anomaly in nyc_taxi time series data through PPL command.")
+    request_body = json.dumps({"query": "source=nyc_taxi | head 10000 | fields value, timestamp | AD shingle_size=8 time_field='timestamp'"})
+    response = requests.post(URL+f"_plugins/_ppl",
+                            data=request_body, headers=HEADERS, auth=AUTH, verify=False)
+    try:
+        assert response.json()["schema"][3]["name"] == "anomaly_grade", \
+            "Detecting anomaly in nyc_taxi time series data through PPL command failed, please check."
+    except KeyError:
+        print(f'{datetime.datetime.now()} '
+              f'Detecting anomaly in nyc_taxi time series data through PPL command failed with status code {response.status_code}')
+    assert len(response.json()["datarows"][0]) == 4, \
+        "The predicting result schema is different from input query, please check."
+    print(f"{datetime.datetime.now()} Detecting anomaly in nyc_taxi time series data through PPL command finished.")
+   
+
 def main():
     config_preparation(args.ml_node_only, args.memory_cb_activate)
     if WORKING_DIRECTORY is not None:
@@ -286,20 +373,36 @@ def main():
         {"sync_kmeans": {"model_id": response.json()["model_id"]}})
     print(f"{datetime.datetime.now()} Training Kmeans with iris data in sync way finished.")
 
-    print(f"{datetime.datetime.now()} Predicting Kmeans with iris data.")
+    print(f"{datetime.datetime.now()} Predicting Kmeans with iris data using old API.")
     request_body = json.dumps({"input_query": {"_source": ["petal_length_in_cm", "petal_width_in_cm"], "size": 10000},
                                "input_index": ["iris_data"]})
     response = requests.post(URL+f"_plugins/_ml/_predict/kmeans/{san_check_id_dict['sync_kmeans']['model_id']}",
                              data=request_body, headers=HEADERS, auth=AUTH, verify=False)
     try:
         assert response.json()["status"] == "COMPLETED", \
-            "Predicting Kmeans with iris data not completed, please check."
+            "Predicting Kmeans with iris data using old API not completed, please check."
     except KeyError:
         print(f'{datetime.datetime.now()} '
-              f'Predicting Kmeans with iris data not completed with status code {response.status_code}')
+              f'Predicting Kmeans with iris data using old API not completed with status code {response.status_code}')
     assert len(response.json()['prediction_result']['rows']) == 150, \
         "The number of the prediction result is different from iris data, please check."
-    print(f"{datetime.datetime.now()} Predicting Kmeans with iris data finished.")
+    print(f"{datetime.datetime.now()} Predicting Kmeans with iris datad using old API finished.")
+
+    print(f"{datetime.datetime.now()} Predicting Kmeans with iris data using new API.")
+    request_body = json.dumps({"input_query": {"_source": ["petal_length_in_cm", "petal_width_in_cm"], "size": 10000},
+                               "input_index": ["iris_data"]})
+    response = requests.post(URL+f"_plugins/_ml/models/{san_check_id_dict['sync_kmeans']['model_id']}/_predict",
+                             data=request_body, headers=HEADERS, auth=AUTH, verify=False)
+    try:
+        assert response.json()["status"] == "COMPLETED", \
+            "Predicting Kmeans with iris data using new API not completed, please check."
+    except KeyError:
+        print(f'{datetime.datetime.now()} '
+              f'Predicting Kmeans with iris data using new API not completed with status code {response.status_code}')
+    assert len(response.json()['prediction_result']['rows']) == 150, \
+        "The number of the prediction result is different from iris data, please check."
+    print(f"{datetime.datetime.now()} Predicting Kmeans with iris datad using new API finished.")
+
 
     # Train and predict Kmeans with iris data
     print(f"{datetime.datetime.now()} Training and predicting Kmeans with iris data.")
@@ -362,6 +465,10 @@ def main():
     assert len(response.json()['prediction_result']['rows']) == 6, \
         "The number of the training and predicting result is different from direct input data, please check."
     print(f"{datetime.datetime.now()} Training and predicting Kmeans with direct input data finished.")
+
+    # Testing PPL command
+    if  not args.no_ppl:
+        ppl_test(san_check_id_dict)
 
     # Training then Predicting linear regression with direct input data in sync way
     print(f"{datetime.datetime.now()} Training and predicting linear regression with direct input data.")
