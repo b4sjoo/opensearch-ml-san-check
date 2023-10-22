@@ -38,7 +38,6 @@ if args.auth is not None:
 else:
     AUTH = None
 
-
 CONFIG_DIRECTORY = args.connector_config_directory
 if CONFIG_DIRECTORY[-1] != '/':
     CONFIG_DIRECTORY += '/'
@@ -173,18 +172,8 @@ def deploy_remote_model(model_type, connector_type, connector_registration, mode
 
 def repeat_connector_test(model_type, test_type="MIX", times=3):
     response_list = list()
-    test_type_set = {"INTERNAL", "STANDALONE"}
 
-    if test_type.upper() == "INTERNAL":
-        test_type_set -= {"STANDALONE"}
-    elif test_type.upper() == "STANDALONE":
-        test_type_set -= {"INTERNAL"}
-    elif test_type.upper() == "MIX":
-        pass
-    else:
-        raise ValueError("Invalid test type, please choose between \"MIX\", \"STANDALONE\" and \"INTERNAL\".")
-    
-    if "STANDALONE" in test_type_set:
+    if test_type == "MIX" or test_type == "STANDALONE":
         print(f"{datetime.datetime.now()} Testing {model_type} standalone connector.")
         for i in range(times):
             print(f"{datetime.datetime.now()} This is the {i+1} time to test {model_type} standalone connector.")
@@ -202,7 +191,7 @@ def repeat_connector_test(model_type, test_type="MIX", times=3):
             response_list.append(response)
             time.sleep(random.uniform(0, 1))
         print(f"{datetime.datetime.now()} {model_type} standalone connector prediction result: {response.json()}")
-    if "INTERNAL" in test_type_set:
+    if test_type == "MIX" or test_type == "STANDALONE":
         print(f"{datetime.datetime.now()} Testing {model_type} internal connector.")
         for i in range(times):
             print(f"{datetime.datetime.now()} This is the {i+1} time to test {model_type} internal connector.")
