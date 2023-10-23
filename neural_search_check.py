@@ -205,6 +205,53 @@ def model_undeployer(model_name, model_format, case="pretrained"):
     print(f"{datetime.datetime.now()} Successfully deleted {case} {model_name} {model_format} model.")
 
 
+def model_prediction_test(model_name, model_format, case="pretrained"):
+    DATA = json.dumps({"text_docs":[ "today is sunny"], "return_number": True, "target_response": ["sentence_embedding"]
+})
+    dimension = requests.get(URL+f"_plugins/_ml/models/{san_check_id_dict[case]['model_id']}", auth=AUTH, verify=False).json()["model_config"]["embedding_dimension"]
+    
+    print(f"{datetime.datetime.now()} Start to test old predict API on {case} {model_name} {model_format} model.")
+    response = requests.post(URL+f"_plugins/_ml/_predict/text_embedding/{san_check_id_dict[case]['model_id']}", data=DATA, headers=HEADERS, auth=AUTH, verify=False)
+    try:
+        assert response.json()["inference_results"][0]["output"][0]["shape"][0] == \
+            len(response.json()["inference_results"][0]["output"][0]["data"]), \
+            f"Failed to test old predict API on {case} {model_name} {model_format} model, returned {response.json()}, please check your network or OpenSearch configuration."
+        assert response.json()["inference_results"][0]["output"][0]["shape"][0] == dimension, \
+            f"Failed to test old predict API on {case} {model_name} {model_format} model, returned {response.json()}, please check your network or OpenSearch configuration."
+    except KeyError:
+        print(f"{datetime.datetime.now()} "
+              f"{case.capitalize()} {model_name} {model_format} model prediction failed with response {response.text}, please check.")
+    print(f"{datetime.datetime.now()} Successfully tested old predict API on {case} {model_name} {model_format} model."
+
+    f"{datetime.datetime.now()} Start to test new predict API on {case} {model_name} {model_format} model.")
+    response = requests.post(URL+f"_plugins/_ml/models/{san_check_id_dict[case]['model_id']}/_predict", data=DATA, headers=HEADERS, auth=AUTH, verify=False)
+    try:
+        assert response.json()["inference_results"][0]["output"][0]["shape"][0] == \
+            len(response.json()["inference_results"][0]["output"][0]["data"]), \
+            f"Failed to test new predict API on {case} {model_name} {model_format} model, returned {response.json()}, please check your network or OpenSearch configuration."
+        assert response.json()["inference_results"][0]["output"][0]["shape"][0] == dimension, \
+            f"Failed to test new predict API on {case} {model_name} {model_format} model, returned {response.json()}, please check your network or OpenSearch configuration."
+    except KeyError:
+        print(f"{datetime.datetime.now()} "
+              f"{case.capitalize()} {model_name} {model_format} model prediction failed with response {response.text}, please check.")
+    print(f"{datetime.datetime.now()} Successfully tested new predict API on {case} {model_name} {model_format} model.")
+
+
+def model_retriver(model_name, url, data_path, chunksize=10000000):
+    with requests.get(url, stream=True, verify=False) as response:
+        if response.ok:
+            print(f"{datetime.datetime.now()} Model retrival success. Now start to write model chunks.")
+            for i, chunk in enumerate(response.iter_content(chunk_size=chunksize)):
+                with open(f"{data_path}{model_name}_{i}", 'wb') as chunk_file:
+                    chunk_file.write(chunk)
+                print(f"{datetime.datetime.now()} Model chunk {i} writing end successfully.")
+            print(f"{datetime.datetime.now()} Model chunks writing end successfully.")
+            return i + 1
+        else:
+            print(f"{datetime.datetime.now()} Model retrival failed.")
+            return response.text
+        
+
 def embedding_model_registration(model_name, model_format, url=None, model_config_path=None):
     print(f"{datetime.datetime.now()} Start to register pretrained {model_name} {model_format} model.")
     PRETRAINED_MODEL_REQUEST_BODY = json.dumps({
@@ -216,6 +263,7 @@ def embedding_model_registration(model_name, model_format, url=None, model_confi
     
     model_register(PRETRAINED_MODEL_REQUEST_BODY, model_name, model_format, "pretrained")
     model_deployer(model_name, model_format, "pretrained")
+    model_prediction_test(model_name, model_format, case="pretrained")
     model_undeployer(model_name, model_format, "pretrained")
 
     if url:
@@ -231,6 +279,7 @@ def embedding_model_registration(model_name, model_format, url=None, model_confi
 
         model_register(json.dumps(model_registration), model_name, model_format, "url")
         model_deployer(model_name, model_format, "url")
+        model_prediction_test(model_name, model_format, case="url")
         model_undeployer(model_name, model_format, "url")
     
     if model_config_path:
@@ -262,24 +311,10 @@ def embedding_model_registration(model_name, model_format, url=None, model_confi
             print(f"{datetime.datetime.now()} Successfully uploaded local {model_name} {model_format} model chunk {i}.")
         print(f"{datetime.datetime.now()} Successfully uploaded local {model_name} {model_format} model.")
         model_deployer(model_name, model_format, "local")
+        model_prediction_test(model_name, model_format, case="local")
         model_undeployer(model_name, model_format, "local")
         for f in glob.glob(model_config_path + model_name + "_*"):
             os.remove(f)
-
-
-def model_retriver(model_name, url, data_path, chunksize=10000000):
-    with requests.get(url, stream=True, verify=False) as response:
-        if response.ok:
-            print(f"{datetime.datetime.now()} Model retrival success. Now start to write model chunks.")
-            for i, chunk in enumerate(response.iter_content(chunk_size=chunksize)):
-                with open(f"{data_path}{model_name}_{i}", 'wb') as chunk_file:
-                    chunk_file.write(chunk)
-                print(f"{datetime.datetime.now()} Model chunk {i} writing end successfully.")
-            print(f"{datetime.datetime.now()} Model chunks writing end successfully.")
-            return i + 1
-        else:
-            print(f"{datetime.datetime.now()} Model retrival failed.")
-            return response.text
 
 
 def main():
